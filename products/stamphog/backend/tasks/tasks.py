@@ -895,9 +895,8 @@ def _retract_stale_approvals_on_skip(repo_config: StamphogRepoConfig, pr: dict[s
     )
     if pull_request is None:
         return
-    # A run at this head was admitted by another delivery for the same push, which can be processed
-    # before this one, so only runs of older heads are stale. A delivery older than the stored
-    # snapshot (a late retry) must not supersede the run of the newer head.
+    # Only runs of older heads are stale: another delivery for this push may have admitted a run at this
+    # head first. A late retry, older than the stored snapshot, must not supersede the newer head's run.
     incoming_updated_at = parse_datetime(pr.get("updated_at") or "")
     stored_updated_at = pull_request.payload_updated_at
     superseded = 0
@@ -1289,9 +1288,8 @@ def process_pull_request_event(payload: dict[str, Any], delivery_id: str) -> Non
 
     # Cheap pre-sandbox drops (drafts, bots, fork/external authors) before we resolve config or spend a
     # sandbox. Only affects the review path — the merged/closed digest capture returned above already.
-    # Exceptions: an identified self-driving inbox PR with an opted-in reviewer re-reviews anyway, and
-    # so does a push by a bot that the repo's default-branch policy admits. Both bypass these filters
-    # plus the review-mode and write-permission gates below.
+    # Exceptions: an identified self-driving inbox PR with an opted-in reviewer, and a bot the repo's policy
+    # admits, re-review anyway and bypass these filters plus the review-mode and write-permission gates below.
     skip_reason = _review_skip_reason(pr)
     carve_out = _InboxCarveOut()
     bot_author_review: dict[str, Any] | None = None
@@ -1335,8 +1333,7 @@ def process_pull_request_event(payload: dict[str, Any], delivery_id: str) -> Non
             _clear_trigger_label_from_bot_pr(installation_id, repo, pr, action)
         if carve_out_error is not None:
             # The dismissal above already ran, so the stale-approval invariant holds however many
-            # retries fail. Retry so the carve-out re-review is re-attempted once the failure clears,
-            # after GitHub's own backoff when it rate limited the lookup.
+            # retries fail. Retry so the carve-out re-review is re-attempted once the failure clears.
             raise cast(Any, process_pull_request_event).retry(
                 exc=carve_out_error, countdown=_retry_countdown(carve_out_error)
             )
@@ -1378,8 +1375,7 @@ def process_pull_request_event(payload: dict[str, Any], delivery_id: str) -> Non
         return
 
     # Bot carve-outs bypass the per-repo review mode: the reviewer's opt-in or the repo's policy is the
-    # gate, and a bot author can't apply a LABEL-mode trigger label anyway. review_mode still governs
-    # human PRs.
+    # gate, and a bot author can't apply a LABEL-mode trigger label anyway.
     mode_skip_reason = _review_mode_skip_reason(repo_config, action, payload, pr) if not carved_out else None
     if mode_skip_reason is not None:
         # Safety net before dropping the event: a LABEL-mode head change skipped for a missing trigger

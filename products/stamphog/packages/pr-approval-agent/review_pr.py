@@ -593,7 +593,6 @@ class Pipeline:
             "pending_attestations_clear_deny": clears_deny(pending_rules),
             # A failed result can pass on a re-run, so the deny is not one only a human can clear.
             "attestations_could_clear_deny": clears_deny(POLICY.attestations),
-            # What an admitted bot's every_file_attested requirement reads.
             "unattested_files": unattested(()),
             "pending_attestations_attest_every_file": not unattested(pending_rules),
             "allow_listed_only": allow_only,

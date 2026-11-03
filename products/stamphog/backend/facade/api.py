@@ -135,7 +135,6 @@ def _digest_run_to_dto(obj: DigestRun) -> contracts.DigestRunDTO:
 _SELF_DRIVING = Q(output__has_key="inbox_review")
 # Same shape for a manual request: request_manual_review writes a populated dict or no key at all.
 _MANUAL = Q(output__has_key="manual_review")
-# Same shape for an admitted bot's run, which process_pull_request_event stamps with a populated dict.
 _BOT_AUTHOR = Q(output__has_key="bot_author_review")
 
 # Preserves the caller's queryset type, so a team-scoped queryset stays team-scoped through the filter.
