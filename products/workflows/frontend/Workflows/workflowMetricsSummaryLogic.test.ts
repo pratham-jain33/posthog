@@ -1,4 +1,5 @@
 import { AppMetricsTimeSeriesResponse } from 'lib/components/AppMetrics/appMetricsLogic'
+import { dayjs } from 'lib/dayjs'
 
 import {
     type EmailMetric,
@@ -7,6 +8,7 @@ import {
     buildEmailMetricRows,
     buildPushMetricRows,
     channelSentLabel,
+    conversionRateQuery,
     detectMessagingChannels,
     parseEmailLinkTotals,
     subtractSeries,
@@ -319,5 +321,42 @@ describe('parseEmailLinkTotals', () => {
         ['an empty url', 'act-1|0|'],
     ])('ignores %s', (_name, instanceId) => {
         expect(parseEmailLinkTotals(totals([instanceId, 5]))).toEqual({})
+    })
+})
+
+describe('conversionRateQuery', () => {
+    it.each([
+        {
+            name: 'a range after the ship date reads whole hours by run start',
+            dateFrom: '2026-11-10T10:30:00Z',
+            dateTo: '2026-11-10T12:30:00Z',
+            expected: {
+                dateFrom: '2026-11-10T10:00:00.000Z',
+                dateTo: '2026-11-10T13:00:00.000Z',
+                metricName: ['conversion_by_start'],
+            },
+        },
+        {
+            name: 'an end time already on the hour stays there',
+            dateFrom: '2026-11-10T10:00:00Z',
+            dateTo: '2026-11-10T12:00:00Z',
+            expected: {
+                dateFrom: '2026-11-10T10:00:00.000Z',
+                dateTo: '2026-11-10T12:00:00.000Z',
+                metricName: ['conversion_by_start'],
+            },
+        },
+        {
+            name: 'a range reaching back past the ship date keeps counting by conversion time',
+            dateFrom: '2026-11-03T23:30:00Z',
+            dateTo: '2026-11-10T12:30:00Z',
+            expected: {
+                dateFrom: '2026-11-03T23:30:00.000Z',
+                dateTo: '2026-11-10T12:30:00.000Z',
+                metricName: ['conversion'],
+            },
+        },
+    ])('$name', ({ dateFrom, dateTo, expected }) => {
+        expect(conversionRateQuery(dayjs.utc(dateFrom), dayjs.utc(dateTo))).toEqual(expected)
     })
 })
