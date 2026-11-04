@@ -13,6 +13,7 @@ from products.signals.backend.tasks import (
     refresh_signal_scout_background_bands,
     sweep_first_report_notifications,
     sweep_implementation_dispatches,
+    sweep_monitoring_research_requests,
     sweep_monitoring_tracker_issues,
     sync_pending_signals_refund_credits,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "refresh_signal_scout_background_bands",
     "sweep_first_report_notifications",
     "sweep_implementation_dispatches",
+    "sweep_monitoring_research_requests",
     "sweep_monitoring_tracker_issues",
     "sync_pending_signals_refund_credits",
 ]
