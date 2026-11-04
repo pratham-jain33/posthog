@@ -52121,6 +52121,8 @@ export namespace Schemas {
      */
     export interface HogFlow {
       readonly id: string;
+      /** Project folder for a newly created workflow. */
+      _create_in_folder?: string;
       /**
          * Workflow name.
          * @maxLength 400
@@ -52741,6 +52743,8 @@ export namespace Schemas {
      */
     export interface HogFlowUpdate {
       readonly id: string;
+      /** Project folder for a newly created workflow. */
+      _create_in_folder?: string;
       /**
          * Workflow name.
          * @maxLength 400
@@ -65502,6 +65506,8 @@ export namespace Schemas {
     }
 
     export interface MessageTemplate {
+      /** Project folder for the new email template. */
+      _create_in_folder?: string;
       readonly id: string;
       /**
          * Human-readable template name shown in the library.
@@ -82104,6 +82110,8 @@ export namespace Schemas {
      */
     export interface PatchedHogFlowUpdate {
       readonly id?: string;
+      /** Project folder for a newly created workflow. */
+      _create_in_folder?: string;
       /**
          * Workflow name.
          * @maxLength 400
@@ -83275,6 +83283,8 @@ export namespace Schemas {
     }
 
     export interface PatchedMessageTemplate {
+      /** Project folder for the new email template. */
+      _create_in_folder?: string;
       readonly id?: string;
       /**
          * Human-readable template name shown in the library.

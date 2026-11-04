@@ -41,6 +41,7 @@ export const messagingTemplatesCreateBodyContentOneEmailOneFromOneEmailMax = 254
 export const messagingTemplatesCreateBodyTypeMax = 24
 
 export const MessagingTemplatesCreateBody = () => zod.object({
+    _create_in_folder: zod.string().optional().describe('Project folder for the new email template.'),
     name: zod
         .string()
         .max(messagingTemplatesCreateBodyNameMax)
@@ -198,6 +199,7 @@ export const messagingTemplatesPartialUpdateBodyContentOneEmailOneFromOneEmailMa
 export const messagingTemplatesPartialUpdateBodyTypeMax = 24
 
 export const MessagingTemplatesPartialUpdateBody = () => zod.object({
+    _create_in_folder: zod.string().optional().describe('Project folder for the new email template.'),
     name: zod
         .string()
         .max(messagingTemplatesPartialUpdateBodyNameMax)
