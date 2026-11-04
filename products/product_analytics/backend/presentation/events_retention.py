@@ -57,6 +57,11 @@ class OrganizationEventsRetentionSerializer(serializers.Serializer):
         read_only=True,
         help_text="The longest window an admin can set, in months. Never longer than the plan's window.",
     )
+    retention_months_choices = serializers.ListField(
+        child=serializers.IntegerField(),
+        read_only=True,
+        help_text="The windows, in months, an admin can set: 1 (30 days), 3 (90 days), 12 (1 year), 24 (2 years), 60 (5 years) or 84 (7 years), limited to the range an admin can set. Only PostHog staff can set other values.",
+    )
 
 
 @extend_schema_serializer(many=False)
@@ -86,7 +91,7 @@ class EventsRetentionUpdateSerializer(serializers.Serializer):
     retention_months = serializers.IntegerField(
         allow_null=True,
         min_value=1,
-        help_text="The window in months. Events older than this are deleted on the next monthly cleanup and can't be restored. Null removes the window.",
+        help_text="The window in months. Has to be one of retention_months_choices unless you are PostHog staff. Older events are not deleted at once. Deletion runs once a month. Null removes the window.",
     )
 
 
@@ -113,6 +118,7 @@ class EventsRetentionViewSet(TeamAndOrgViewSetMixin, viewsets.ViewSet):
                     "plan_retention_months": organization.plan_months,
                     "min_retention_months": organization.min_months,
                     "max_retention_months": organization.max_months,
+                    "retention_months_choices": organization.choice_months,
                 }
             ).data
         )
@@ -135,12 +141,13 @@ class EventsRetentionViewSet(TeamAndOrgViewSetMixin, viewsets.ViewSet):
         operation_id="events_retention_update",
         summary="Set the events retention window for a project",
         description=(
-            "Sets how long this project keeps events, overriding the organization's window. Events older than the "
-            "window are deleted on the next monthly cleanup and can't be restored. Organization admins only."
+            "Sets how long this project keeps events, overriding the organization's window. The window has to be one of "
+            "retention_months_choices unless you are PostHog staff. Older events are not deleted at once. Deletion "
+            "runs once a month. Organization admins only."
         ),
         responses={
             200: OpenApiResponse(response=EventsRetentionSerializer, description="The project's new window."),
-            400: OpenApiResponse(description="The window is outside the range an admin can set."),
+            400: OpenApiResponse(description="The window is not one of the choices an admin can set."),
             403: OpenApiResponse(description="The user isn't an organization admin."),
         },
     )
@@ -173,6 +180,7 @@ class OrganizationEventsRetentionViewSet(TeamAndOrgViewSetMixin, viewsets.ViewSe
                     "plan_retention_months": organization.plan_months,
                     "min_retention_months": organization.min_months,
                     "max_retention_months": organization.max_months,
+                    "retention_months_choices": organization.choice_months,
                 }
             ).data
         )
@@ -194,14 +202,15 @@ class OrganizationEventsRetentionViewSet(TeamAndOrgViewSetMixin, viewsets.ViewSe
         operation_id="organization_events_retention_update",
         summary="Set the organization's events retention window",
         description=(
-            "Sets how long every project without its own window keeps events. Events older than the window are "
-            "deleted on the next monthly cleanup and can't be restored. Organization admins only."
+            "Sets how long every project without its own window keeps events. The window has to be one of "
+            "retention_months_choices unless you are PostHog staff. Older events are not deleted at once. Deletion "
+            "runs once a month. Organization admins only."
         ),
         responses={
             200: OpenApiResponse(
                 response=OrganizationEventsRetentionSerializer, description="The organization's new window."
             ),
-            400: OpenApiResponse(description="The window is outside the range an admin can set."),
+            400: OpenApiResponse(description="The window is not one of the choices an admin can set."),
             403: OpenApiResponse(description="The user isn't an organization admin."),
         },
     )

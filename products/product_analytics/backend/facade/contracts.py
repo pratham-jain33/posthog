@@ -198,3 +198,4 @@ class OrganizationEventsRetention:
     plan_months: int
     min_months: int
     max_months: int
+    choice_months: list[int]

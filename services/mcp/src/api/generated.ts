@@ -42066,6 +42066,8 @@ export namespace Schemas {
       readonly min_retention_months: number;
       /** The longest window an admin can set, in months. Never longer than the plan's window. */
       readonly max_retention_months: number;
+      /** The windows, in months, an admin can set: 1 (30 days), 3 (90 days), 12 (1 year), 24 (2 years), 60 (5 years) or 84 (7 years), limited to the range an admin can set. Only PostHog staff can set other values. */
+      readonly retention_months_choices: readonly number[];
       /**
          * How many months of events stay queryable, counted back from today. Null while no retention window applies to the project.
          * @nullable
@@ -42087,7 +42089,7 @@ export namespace Schemas {
 
     export interface EventsRetentionUpdate {
       /**
-         * The window in months. Events older than this are deleted on the next monthly cleanup and can't be restored. Null removes the window.
+         * The window in months. Has to be one of retention_months_choices unless you are PostHog staff. Older events are not deleted at once. Deletion runs once a month. Null removes the window.
          * @minimum 1
          * @nullable
          */
@@ -69261,6 +69263,8 @@ export namespace Schemas {
       readonly min_retention_months: number;
       /** The longest window an admin can set, in months. Never longer than the plan's window. */
       readonly max_retention_months: number;
+      /** The windows, in months, an admin can set: 1 (30 days), 3 (90 days), 12 (1 year), 24 (2 years), 60 (5 years) or 84 (7 years), limited to the range an admin can set. Only PostHog staff can set other values. */
+      readonly retention_months_choices: readonly number[];
     }
 
     export interface OrganizationFeatureFlagRow {

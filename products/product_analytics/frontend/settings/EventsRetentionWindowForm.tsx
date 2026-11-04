@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react'
 
-import { LemonBanner, LemonButton, LemonDialog, LemonInput, Link } from '@posthog/lemon-ui'
+import { LemonButton, LemonDialog, LemonSelect, Link } from '@posthog/lemon-ui'
 
 import { urls } from 'scenes/urls'
 
 import { LONGEST_PLAN_RETENTION_MONTHS } from 'products/product_analytics/frontend/insights/dataRetention/dataRetentionBannerLogic'
 
+const RETENTION_DAYS_LABELS: Record<number, string> = { 1: '30 days', 3: '90 days' }
+
+export function formatRetentionMonths(months: number): string {
+    if (RETENTION_DAYS_LABELS[months]) {
+        return RETENTION_DAYS_LABELS[months]
+    }
+    if (months % 12 === 0) {
+        const years = months / 12
+        return years === 1 ? '1 year' : `${years} years`
+    }
+    return `${months} months`
+}
+
 export interface EventsRetentionWindowFormProps {
     retentionMonths: number | null
-    minMonths: number
+    choiceMonths: readonly number[]
     maxMonths: number
     planMonths: number
     /** Who keeps events for the chosen window, as the start of a sentence, e.g. "This project". */
@@ -21,27 +34,9 @@ export interface EventsRetentionWindowFormProps {
     dataAttr: string
 }
 
-function draftMonthsProblem(
-    draftMonths: number | undefined,
-    minMonths: number,
-    maxMonths: number,
-    retentionMonths: number | null
-): string | null {
-    if (draftMonths === undefined || !Number.isInteger(draftMonths)) {
-        return 'Enter a whole number of months'
-    }
-    if (draftMonths < minMonths || draftMonths > maxMonths) {
-        return `Choose between ${minMonths} and ${maxMonths} months`
-    }
-    if (draftMonths === retentionMonths) {
-        return 'No changes to save'
-    }
-    return null
-}
-
 export function EventsRetentionWindowForm({
     retentionMonths,
-    minMonths,
+    choiceMonths,
     maxMonths,
     planMonths,
     keptBy,
@@ -51,25 +46,33 @@ export function EventsRetentionWindowForm({
     onSave,
     dataAttr,
 }: EventsRetentionWindowFormProps): JSX.Element {
-    const [draftMonths, setDraftMonths] = useState<number | undefined>(retentionMonths ?? undefined)
+    const [draftMonths, setDraftMonths] = useState<number | null>(retentionMonths)
 
     useEffect(() => {
-        setDraftMonths(retentionMonths ?? undefined)
+        setDraftMonths(retentionMonths)
     }, [retentionMonths])
 
+    // Staff can set a window outside the choices, so show it to keep the current value visible.
+    const optionMonths =
+        retentionMonths === null || choiceMonths.includes(retentionMonths)
+            ? choiceMonths
+            : [...choiceMonths, retentionMonths].sort((a, b) => a - b)
+
     const saveDisabledReason =
-        restrictionReason ?? draftMonthsProblem(draftMonths, minMonths, maxMonths, retentionMonths)
+        restrictionReason ??
+        (draftMonths === null ? 'Choose a retention period' : null) ??
+        (draftMonths === retentionMonths ? 'No changes to save' : null)
 
     const confirmSave = (): void => {
-        if (draftMonths === undefined) {
+        if (draftMonths === null) {
             return
         }
+        const label = formatRetentionMonths(draftMonths)
         LemonDialog.open({
-            title: `Delete events older than ${draftMonths} months?`,
-            description: `${keptBy} keeps events for ${draftMonths} months. Older events are deleted at the next monthly cleanup and can't be restored.`,
+            title: `Keep events for ${label}?`,
+            description: `${keptBy} will keep events for ${label}. Deletion of older events is not instant. It happens once a month.`,
             primaryButton: {
-                children: 'Delete older events',
-                status: 'danger',
+                children: 'Save',
                 onClick: () => onSave(draftMonths),
                 'data-attr': `${dataAttr}-confirm`,
             },
@@ -79,10 +82,10 @@ export function EventsRetentionWindowForm({
 
     const confirmRemove = (): void => {
         LemonDialog.open({
-            title: 'Remove this window?',
+            title: 'Remove this retention period?',
             description: removedDescription,
             primaryButton: {
-                children: 'Remove window',
+                children: 'Remove',
                 onClick: () => onSave(null),
                 'data-attr': `${dataAttr}-remove-confirm`,
             },
@@ -92,26 +95,18 @@ export function EventsRetentionWindowForm({
 
     return (
         <div>
-            <LemonBanner type="warning" className="max-w-160 mb-4">
-                Events older than this window are deleted at the next monthly cleanup. Deleted events can't be restored.
-            </LemonBanner>
             <div className="flex flex-wrap items-center gap-2">
-                <LemonInput
-                    type="number"
-                    min={minMonths}
-                    max={maxMonths}
-                    value={draftMonths}
+                <LemonSelect<number>
+                    value={draftMonths ?? undefined}
                     onChange={setDraftMonths}
-                    onPressEnter={() => !saveDisabledReason && confirmSave()}
+                    options={optionMonths.map((months) => ({ value: months, label: formatRetentionMonths(months) }))}
                     placeholder="Not set"
-                    suffix={<span className="text-secondary">months</span>}
-                    disabled={!!restrictionReason || saving}
+                    disabledReason={restrictionReason ?? (saving ? 'Saving...' : null)}
                     className="w-40"
-                    data-attr={`${dataAttr}-input`}
+                    data-attr={`${dataAttr}-select`}
                 />
                 <LemonButton
                     type="primary"
-                    status="danger"
                     onClick={confirmSave}
                     loading={saving}
                     disabledReason={saveDisabledReason}
@@ -126,16 +121,16 @@ export function EventsRetentionWindowForm({
                         disabledReason={restrictionReason ?? (saving ? 'Saving...' : null)}
                         data-attr={`${dataAttr}-remove`}
                     >
-                        Remove window
+                        Remove
                     </LemonButton>
                 )}
             </div>
             <p className="mt-2 mb-0 text-sm text-secondary">
-                You can choose between {minMonths} and {maxMonths} months.
+                Deletion of older events is not instant. It happens once a month.
                 {maxMonths === planMonths && planMonths < LONGEST_PLAN_RETENTION_MONTHS && (
                     <>
                         {' '}
-                        Need a longer window? <Link to={urls.organizationBilling()}>Upgrade your plan</Link>.
+                        Need a longer period? <Link to={urls.organizationBilling()}>Upgrade your plan</Link>.
                     </>
                 )}
             </p>

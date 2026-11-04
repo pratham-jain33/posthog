@@ -102,7 +102,7 @@ export const getOrganizationEventsRetentionUpdateUrl = (organizationId: string) 
 }
 
 /**
- * Sets how long every project without its own window keeps events. Events older than the window are deleted on the next monthly cleanup and can't be restored. Organization admins only.
+ * Sets how long every project without its own window keeps events. The window has to be one of retention_months_choices unless you are PostHog staff. Older events are not deleted at once. Deletion runs once a month. Organization admins only.
  * @summary Set the organization's events retention window
  */
 export const organizationEventsRetentionUpdate = async (
@@ -412,7 +412,7 @@ export const getEventsRetentionUpdateUrl = (projectId: string) => {
 }
 
 /**
- * Sets how long this project keeps events, overriding the organization's window. Events older than the window are deleted on the next monthly cleanup and can't be restored. Organization admins only.
+ * Sets how long this project keeps events, overriding the organization's window. The window has to be one of retention_months_choices unless you are PostHog staff. Older events are not deleted at once. Deletion runs once a month. Organization admins only.
  * @summary Set the events retention window for a project
  */
 export const eventsRetentionUpdate = async (

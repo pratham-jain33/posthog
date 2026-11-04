@@ -6,7 +6,7 @@ import { useRestrictedArea } from 'lib/components/RestrictedArea'
 import { OrganizationMembershipLevel } from 'lib/constants'
 
 import { eventsRetentionSettingsLogic } from './eventsRetentionSettingsLogic'
-import { EventsRetentionWindowForm } from './EventsRetentionWindowForm'
+import { EventsRetentionWindowForm, formatRetentionMonths } from './EventsRetentionWindowForm'
 
 export function OrganizationEventsRetentionSetting(): JSX.Element | null {
     const { projectRetention, organizationRetention, organizationRetentionLoading } =
@@ -19,24 +19,26 @@ export function OrganizationEventsRetentionSetting(): JSX.Element | null {
     }
 
     const planMonths = organizationRetention.plan_retention_months
+    const planLabel = formatRetentionMonths(planMonths)
 
     return (
         <div>
             <p className="max-w-160 text-sm text-secondary mb-4">
-                Choose how long projects in this organization keep events. A project can set its own window instead.{' '}
+                Choose how long projects in this organization keep events. A project can set its own retention period
+                instead.{' '}
                 {organizationRetention.organization_retention_months === null &&
-                    `No window is set, so projects keep events for your plan's window of ${planMonths} months. `}
+                    `No retention period is set, so projects keep events for your plan's retention period of ${planLabel}. `}
                 <Link to={projectRetention.docs_url} target="_blank">
                     Learn more
                 </Link>
             </p>
             <EventsRetentionWindowForm
                 retentionMonths={organizationRetention.organization_retention_months}
-                minMonths={organizationRetention.min_retention_months}
+                choiceMonths={organizationRetention.retention_months_choices}
                 maxMonths={organizationRetention.max_retention_months}
                 planMonths={planMonths}
-                keptBy="Every project without its own window"
-                removedDescription={`Projects without their own window will keep events for your plan's window of ${planMonths} months.`}
+                keptBy="Every project without its own retention period"
+                removedDescription={`Projects without their own retention period will keep events for your plan's retention period of ${planLabel}.`}
                 saving={organizationRetentionLoading}
                 restrictionReason={restrictionReason}
                 onSave={updateOrganizationRetention}

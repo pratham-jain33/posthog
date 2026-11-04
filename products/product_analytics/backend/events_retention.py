@@ -18,6 +18,16 @@ from posthog.models.user import User
 
 from products.product_analytics.backend.facade.contracts import OrganizationEventsRetention
 
+# Only staff can set a window outside these, e.g. for a contract.
+RETENTION_CHOICE_LABELS = {
+    1: "30 days",
+    3: "90 days",
+    12: "1 year",
+    24: "2 years",
+    60: "5 years",
+    84: "7 years",
+}
+
 
 def _report_retention_set(
     organization: Organization,
@@ -78,11 +88,14 @@ def organization_events_retention(organization: Organization) -> OrganizationEve
     config = OrganizationEventsRetentionConfig.objects.filter(organization_id=organization.id).first()
     plan_months = organization_events_retention_months(organization)
     staff_max = config.max_events_retention_months if config else None
+    min_months = (config.min_events_retention_months if config else None) or 1
+    max_months = min(plan_months, staff_max) if staff_max else plan_months
     return OrganizationEventsRetention(
         organization_months=config.default_events_retention_months if config else None,
         plan_months=plan_months,
-        min_months=(config.min_events_retention_months if config else None) or 1,
-        max_months=min(plan_months, staff_max) if staff_max else plan_months,
+        min_months=min_months,
+        max_months=max_months,
+        choice_months=[months for months in RETENTION_CHOICE_LABELS if min_months <= months <= max_months],
     )
 
 
@@ -94,8 +107,20 @@ def project_events_retention_months(team: Team) -> int | None:
     )
 
 
-def _check_allowed(retention: OrganizationEventsRetention, months: int | None) -> None:
-    if months is not None and not retention.min_months <= months <= retention.max_months:
+def _describe_choices(choice_months: list[int]) -> str:
+    if not choice_months:
+        return "Contact PostHog support to change events retention."
+    choices = [f"{months} ({RETENTION_CHOICE_LABELS[months]})" for months in choice_months]
+    listed = f"{', '.join(choices[:-1])} or {choices[-1]}" if len(choices) > 1 else choices[0]
+    return f"Events retention has to be {listed} months. Only PostHog staff can set other values."
+
+
+def _check_allowed(retention: OrganizationEventsRetention, months: int | None, user: User) -> None:
+    if months is None:
+        return
+    if not user.is_staff and months not in retention.choice_months:
+        raise ValidationError(_describe_choices(retention.choice_months))
+    if not retention.min_months <= months <= retention.max_months:
         raise ValidationError(
             f"Events retention has to be {describe_months_range(retention.min_months, retention.max_months)}."
         )
@@ -116,7 +141,7 @@ def set_organization_events_retention(
         before = config.default_events_retention_months if config else None
         if months == before:
             return
-        _check_allowed(organization_events_retention(organization), months)
+        _check_allowed(organization_events_retention(organization), months, user)
         config = config or OrganizationEventsRetentionConfig(organization_id=organization.id)
         config.default_events_retention_months = months
         config.full_clean()
@@ -156,7 +181,7 @@ def set_project_events_retention(
         before = config.events_retention_months if config else None
         if months == before:
             return
-        _check_allowed(organization_events_retention(team.organization), months)
+        _check_allowed(organization_events_retention(team.organization), months, user)
         if months is None:
             TeamEventsRetentionConfig.objects.filter(team_id=team.id).delete()
         else:

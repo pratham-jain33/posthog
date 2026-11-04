@@ -111,6 +111,7 @@ export const defaultMocks: Mocks = {
             plan_retention_months: 84,
             min_retention_months: 1,
             max_retention_months: 84,
+            retention_months_choices: [1, 3, 12, 24, 60, 84],
         },
         '/api/projects/:team_id/annotations/': EMPTY_PAGINATED_RESPONSE,
         '/api/projects/:team_id/event_definitions/': EMPTY_PAGINATED_RESPONSE,
@@ -182,6 +183,7 @@ export const defaultMocks: Mocks = {
             plan_retention_months: 84,
             min_retention_months: 1,
             max_retention_months: 84,
+            retention_months_choices: [1, 3, 12, 24, 60, 84],
         },
         '/api/organizations/:organization_id/resource_access': EMPTY_PAGINATED_RESPONSE,
         '/api/organizations/:organization_id/members/': toPaginatedResponse([
