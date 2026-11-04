@@ -75,6 +75,17 @@ describe('useChartMargins', () => {
         expect(empty.left).toBeGreaterThanOrEqual(fourCharLabelReserve)
     })
 
+    it('reserves room for the longer tick labels of a floated axis', () => {
+        const nearlyFlat: Series[] = [{ key: 'a', label: 'A', data: [99.9995, 99.9999] }]
+        const yTickFormatter = (value: number): string => `${value}%`
+        const floatedTickLabel = '99.9995%'.length * 10 // matches the mocked measureLabelWidth
+
+        expect(render({ series: nearlyFlat, yTickFormatter }).left).toBeLessThan(floatedTickLabel)
+        expect(render({ series: nearlyFlat, yTickFormatter, floatBaseline: true }).left).toBeGreaterThanOrEqual(
+            floatedTickLabel
+        )
+    })
+
     it('reserves the left title band for a horizontal chart category-axis title', () => {
         const withoutTitle = render({ axisOrientation: 'horizontal' })
         const withTitle = render({ axisOrientation: 'horizontal', yAxisTitles: { left: 'Series' } })
