@@ -253,6 +253,9 @@ export function loadPostHogJS(): void {
                 blockSelector: '.ph-replay-block',
                 streamNetworkBody: true,
                 captureJsonLd: false,
+                // These requests carry device tokens and the distinct IDs of the customer's users.
+                maskCapturedNetworkRequestFn: (request) =>
+                    request.name.includes('/push_token_imports') ? null : request,
             },
             person_profiles: 'always',
             // posthog-js patches fetch to add X-POSTHOG-* tracing headers to these hosts. In OAuth
