@@ -438,17 +438,21 @@ export const explainChartLogic: LogicWrapper<explainChartLogicType> = kea<explai
                     insightId,
                     explanationId
                 )
-                if (values.linkedExplanationId === explanationId) {
-                    actions.receiveStory(
-                        withEvidenceLinks(explanation.data as ExplainChartData),
-                        values.savedInsight.query ?? null,
-                        'link'
-                    )
-                    actions.setStoryAuthor({
-                        createdBy: explanation.created_by ?? null,
-                        createdAt: explanation.created_at,
-                    })
+                if (values.linkedExplanationId !== explanationId) {
+                    return
                 }
+                if (explanation.data.shape !== 'time_series') {
+                    lemonToast.error(
+                        'This chart explanation needs a newer version of PostHog. Refresh the page to see it.'
+                    )
+                    return
+                }
+                actions.receiveStory(
+                    withEvidenceLinks(explanation.data as ExplainChartData),
+                    values.savedInsight.query ?? null,
+                    'link'
+                )
+                actions.setStoryAuthor({ createdBy: explanation.created_by ?? null, createdAt: explanation.created_at })
             } catch {
                 if (cache.linkedExplanationIdLoaded === explanationId) {
                     cache.linkedExplanationIdLoaded = null

@@ -6,6 +6,7 @@ import { explainChartStoryFor, storyOnChart, withEvidenceLinks } from './explain
 
 const INSIGHT = { id: 42, short_id: 'aBc12345' } as insightLogicValues['insight']
 const STORY = {
+    shape: 'time_series',
     query: { kind: 'TrendsQuery' },
     results: [{ label: 'Pageviews', data: [1, 2, 3], days: ['2026-10-01', '2026-10-02', '2026-10-03'] }],
     seriesIndex: 0,
@@ -22,6 +23,18 @@ describe('explainChartStory', () => {
         ['another insight', { insightId: 'zzz99999' }, STORY, null],
         ['an unsaved query', { query: { kind: 'TrendsQuery' } }, STORY, null],
         ['a result that is not a story', { insightId: 'aBc12345' }, { headline: 'A peak' }, null],
+        [
+            'a story from a server that predates shapes',
+            { insightId: 'aBc12345' },
+            { ...STORY, shape: undefined },
+            STORY,
+        ],
+        [
+            'a story of a shape this page cannot draw',
+            { insightId: 'aBc12345' },
+            { ...STORY, shape: 'funnel_steps' },
+            null,
+        ],
     ])('takes a story for %s only when it explains this insight', (_, input, output, expected) => {
         expect(explainChartStoryFor(INSIGHT, input, output)).toEqual(expected)
     })

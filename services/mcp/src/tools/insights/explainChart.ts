@@ -300,6 +300,7 @@ export const explainChartHandler: ToolBase<typeof schema, Result>['handler'] = a
     })
 
     const data: ExplainChartData = {
+        shape: 'time_series',
         query: chart.query,
         results,
         seriesIndex: params.series,

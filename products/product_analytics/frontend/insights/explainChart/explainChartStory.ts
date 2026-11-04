@@ -23,7 +23,7 @@ export function explainChartStoryFor(
     if (requested === undefined || !insightIds.includes(String(requested))) {
         return null
     }
-    return isExplainChartData(output) ? output : null
+    return isExplainChartData(output) ? { ...output, shape: 'time_series' } : null
 }
 
 export function withEvidenceLinks(story: ExplainChartData): ExplainChartData {
@@ -97,6 +97,7 @@ function isExplainChartData(
 ): output is ExplainChartData & Record<string, unknown> {
     return (
         !!output &&
+        (output.shape === undefined || output.shape === 'time_series') &&
         typeof output.headline === 'string' &&
         Array.isArray(output.chapters) &&
         Array.isArray(output.results) &&

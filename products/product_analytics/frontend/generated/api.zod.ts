@@ -225,6 +225,7 @@ export const InsightsCreateBody = /* @__PURE__ */ zod
     .record(zod.string(), zod.unknown())
     .describe('Deep\/recursive schema (opaque in Zod — use TypeScript types for full shape)')
 
+export const insightsExplanationsCreateBodyDataOneShapeDefault = `time_series`
 export const insightsExplanationsCreateBodyDataOneSeriesIndexMin = 0
 
 export const insightsExplanationsCreateBodyDataOneChaptersItemRangeItemMin = 0
@@ -235,7 +236,14 @@ export const insightsExplanationsCreateBodyDataOneChaptersItemRangeMax = 2
 export const InsightsExplanationsCreateBody = /* @__PURE__ */ zod.object({
     data: zod
         .object({
-            query: zod.record(zod.string(), zod.unknown()).describe('The TrendsQuery the explanation follows.'),
+            shape: zod
+                .enum(['time_series'])
+                .describe('\* `time_series` - Time series')
+                .default(insightsExplanationsCreateBodyDataOneShapeDefault)
+                .describe(
+                    'What the explanation walks through, whichever insight drew the chart. A funnel over time is a time series too.\n\n\* `time_series` - Time series'
+                ),
+            query: zod.record(zod.string(), zod.unknown()).describe('The insight query the explanation follows.'),
             results: zod
                 .array(
                     zod.object({

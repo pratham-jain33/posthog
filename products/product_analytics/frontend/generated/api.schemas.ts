@@ -9127,6 +9127,16 @@ export interface PaginatedInsightListApi {
     results: InsightApi[]
 }
 
+/**
+ * * `time_series` - Time series
+ */
+export type ChartExplanationShapeEnumApi =
+    (typeof ChartExplanationShapeEnumApi)[keyof typeof ChartExplanationShapeEnumApi]
+
+export const ChartExplanationShapeEnumApi = {
+    TimeSeries: 'time_series',
+} as const
+
 export interface StorySeriesResultApi {
     /** The series name. */
     label?: string
@@ -9247,12 +9257,16 @@ export interface StoryChapterApi {
 }
 
 /**
- * The TrendsQuery the explanation follows.
+ * The insight query the explanation follows.
  */
 export type ExplainChartDataApiQuery = { [key: string]: unknown }
 
 export interface ExplainChartDataApi {
-    /** The TrendsQuery the explanation follows. */
+    /** What the explanation walks through, whichever insight drew the chart. A funnel over time is a time series too.
+     *
+     * * `time_series` - Time series */
+    shape?: ChartExplanationShapeEnumApi
+    /** The insight query the explanation follows. */
     query: ExplainChartDataApiQuery
     /** Every series on the chart when it was explained. */
     results: StorySeriesResultApi[]

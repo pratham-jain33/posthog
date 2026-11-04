@@ -49,6 +49,7 @@ class TestInsightExplanationCreateSerializer(SimpleTestCase):
     @parameterized.expand(
         [
             ("missing_series", _explanation(seriesIndex=1)),
+            ("unknown_shape", _explanation(shape="funnel_steps")),
             ("too_large", _explanation(headline="x" * 1_000_001)),
         ]
     )
@@ -63,6 +64,7 @@ class TestInsightExplanationCreateSerializer(SimpleTestCase):
         assert serializer.validated_data["data"]["results"] == [
             {"label": "$pageview", "data": [3.0, 9.0, 4.0], "days": ["2026-10-01", "2026-10-02", "2026-10-03"]}
         ]
+        assert serializer.validated_data["data"]["shape"] == "time_series"
         assert serializer.validated_data["data"]["chapters"][0]["evidence"] == [
             {"text": "Most views came from one referrer."}
         ]

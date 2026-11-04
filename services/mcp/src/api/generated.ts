@@ -24746,6 +24746,16 @@ export namespace Schemas {
       star?: boolean;
     }
 
+    /**
+     * * `time_series` - Time series
+     */
+    export type ChartExplanationShapeEnum = typeof ChartExplanationShapeEnum[keyof typeof ChartExplanationShapeEnum];
+
+
+    export const ChartExplanationShapeEnum = {
+      TimeSeries: 'time_series',
+    } as const;
+
     export interface StorySeriesResult {
       /** The series name. */
       label?: string;
@@ -24867,12 +24877,16 @@ export namespace Schemas {
     }
 
     /**
-     * The TrendsQuery the explanation follows.
+     * The insight query the explanation follows.
      */
     export type ExplainChartDataQuery = { [key: string]: unknown };
 
     export interface ExplainChartData {
-      /** The TrendsQuery the explanation follows. */
+      /** What the explanation walks through, whichever insight drew the chart. A funnel over time is a time series too.
+       *
+       * * `time_series` - Time series */
+      shape?: ChartExplanationShapeEnum;
+      /** The insight query the explanation follows. */
       query: ExplainChartDataQuery;
       /** Every series on the chart when it was explained. */
       results: StorySeriesResult[];

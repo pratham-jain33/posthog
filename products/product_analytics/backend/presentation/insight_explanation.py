@@ -37,6 +37,10 @@ class StoryEvidenceChartType(models.TextChoices):
     BAR = "bar", "Bar"
 
 
+class ChartExplanationShape(models.TextChoices):
+    TIME_SERIES = "time_series", "Time series"
+
+
 class StoryConfidence(models.TextChoices):
     HIGH = "high", "High confidence"
     MEDIUM = "medium", "Medium confidence"
@@ -112,7 +116,12 @@ class StorySeriesResultSerializer(serializers.Serializer):
 
 
 class ExplainChartDataSerializer(serializers.Serializer):
-    query = serializers.DictField(child=serializers.JSONField(), help_text="The TrendsQuery the explanation follows.")
+    shape = serializers.ChoiceField(
+        choices=ChartExplanationShape.choices,
+        default=ChartExplanationShape.TIME_SERIES,
+        help_text="What the explanation walks through, whichever insight drew the chart. A funnel over time is a time series too.",
+    )
+    query = serializers.DictField(child=serializers.JSONField(), help_text="The insight query the explanation follows.")
     results = StorySeriesResultSerializer(many=True, help_text="Every series on the chart when it was explained.")
     seriesIndex = serializers.IntegerField(min_value=0, help_text="The index in `results` the explanation follows.")
     insightName = serializers.CharField(allow_null=True, allow_blank=True, help_text="The insight's name.")
