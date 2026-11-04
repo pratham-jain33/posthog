@@ -35,7 +35,7 @@ import {
     formatMailbox,
     parseAddressList,
     sanitizeEmailSubject,
-    teamEmailCapBuckets,
+    teamEmailCapBucket,
 } from './email.service'
 import { MailDevAPI } from './helpers/maildev'
 import { EmailTrackingCodeSigner } from './helpers/tracking-code'
@@ -915,12 +915,12 @@ describe('EmailService', () => {
         })
 
         describe('team sending cap (enforce mode)', () => {
-            let claimAllOrNothingPair: jest.Mock
+            let claimAllOrNothing: jest.Mock
             let cappedService: EmailService
             let cappedSendSpy: jest.SpyInstance
 
             beforeEach(() => {
-                claimAllOrNothingPair = jest.fn()
+                claimAllOrNothing = jest.fn()
                 const configService = new TeamWorkflowsConfigService(hub.postgres, hub.pubSub)
                 jest.spyOn(configService, 'getEmailSendingTier').mockResolvedValue(0)
                 cappedService = new EmailService(
@@ -932,7 +932,6 @@ describe('EmailService', () => {
                         sesTrackedConfigurationSet: hub.SES_TRACKED_CONFIGURATION_SET,
                         sesUntrackedConfigurationSet: hub.SES_UNTRACKED_CONFIGURATION_SET,
                         teamEmailCapMode: 'enforce',
-                        teamEmailTierHourlyCaps: [100],
                         teamEmailTierDailyCaps: [200],
                     },
                     hub.integrationManager,
@@ -946,7 +945,7 @@ describe('EmailService', () => {
                     { report: jest.fn() },
                     undefined,
                     null,
-                    { claimAllOrNothingPair } as unknown as RateLimiterService
+                    { claimAllOrNothing } as unknown as RateLimiterService
                 )
                 cappedSendSpy = jest.spyOn(cappedService.sesV2Client!, 'send') as any
                 cappedSendSpy.mockResolvedValue({ MessageId: 'test-message-id' })
@@ -970,7 +969,7 @@ describe('EmailService', () => {
                     2 * 60 * 60 * 1000,
                 ],
             ])('%s', async (_name, retryAfterMs, reserved, minMs, maxMs) => {
-                claimAllOrNothingPair.mockResolvedValue({ granted: false, deniedIndex: 1, retryAfterMs, reserved })
+                claimAllOrNothing.mockResolvedValue({ granted: false, retryAfterMs, reserved })
 
                 const before = Date.now()
                 const result = await cappedService.executeSendEmail(invocation)
@@ -994,12 +993,7 @@ describe('EmailService', () => {
                 // A Valkey fault denies with no horizon. Parking on the daily cap's pacing
                 // interval would hold the email long after the limiter recovered.
                 jest.spyOn(Math, 'random').mockReturnValue(0)
-                claimAllOrNothingPair.mockResolvedValue({
-                    granted: false,
-                    deniedIndex: null,
-                    retryAfterMs: null,
-                    reserved: false,
-                })
+                claimAllOrNothing.mockResolvedValue({ granted: false, retryAfterMs: null, reserved: false })
 
                 const before = Date.now()
                 const result = await cappedService.executeSendEmail(invocation)
@@ -1009,29 +1003,20 @@ describe('EmailService', () => {
                 const scheduledMs = result.invocation.queueScheduledAt!.toMillis()
                 expect(scheduledMs).toBeGreaterThanOrEqual(before + 5 * 60 * 1000)
                 expect(scheduledMs).toBeLessThan(before + 5 * 60 * 1000 + 5000)
-                // No bucket denied, so the customer must not be told they hit a cap they never hit.
+                // No cap was reached, so the customer must not be told they hit one.
                 const messages = result.logs.map((log) => log.message).join(' ')
                 expect(messages).not.toContain('reached its email sending limit')
                 expect(messages).toContain("Could not check this project's email sending limit")
             })
 
             it('sends when the claim is granted', async () => {
-                claimAllOrNothingPair.mockResolvedValue({
-                    granted: true,
-                    deniedIndex: null,
-                    retryAfterMs: null,
-                    reserved: false,
-                })
+                claimAllOrNothing.mockResolvedValue({ granted: true, retryAfterMs: null, reserved: false })
 
                 const result = await cappedService.executeSendEmail(invocation)
 
                 // The reservation horizon must reach the limiter, or denials fall back to
                 // shared-horizon wakes and a denied backlog re-herds.
-                expect(claimAllOrNothingPair).toHaveBeenCalledWith(
-                    expect.anything(),
-                    expect.any(Number),
-                    60 * 60 * 1000
-                )
+                expect(claimAllOrNothing).toHaveBeenCalledWith(expect.anything(), 60 * 60 * 1000)
                 expect(result.finished).toBe(true)
                 expect(cappedSendSpy).toHaveBeenCalled()
             })
@@ -1040,7 +1025,6 @@ describe('EmailService', () => {
             // their own future slots instead of all waking together, and another team's send
             // goes straight out. Runs against the real limiter.
             it('spreads a capped team over distinct slots while another team keeps sending', async () => {
-                const hourlyCap = 360
                 const dailyCap = 8640
                 const redis = createRedisV2PoolFromConfig({
                     connection: hub.CDP_REDIS_HOST
@@ -1064,7 +1048,6 @@ describe('EmailService', () => {
                         sesTrackedConfigurationSet: hub.SES_TRACKED_CONFIGURATION_SET,
                         sesUntrackedConfigurationSet: hub.SES_UNTRACKED_CONFIGURATION_SET,
                         teamEmailCapMode: 'enforce',
-                        teamEmailTierHourlyCaps: [hourlyCap],
                         teamEmailTierDailyCaps: [dailyCap],
                     },
                     hub.integrationManager,
@@ -1083,15 +1066,10 @@ describe('EmailService', () => {
                 const enforcedSendSpy = jest.spyOn(enforcedService.sesV2Client!, 'send') as any
                 enforcedSendSpy.mockResolvedValue({ MessageId: 'test-message-id' })
 
-                // Drain the capped team's hourly bucket so every send below is a denial. The
+                // Drain the capped team's bucket so every send below is a denial. The
                 // 0.1 tokens/s refill makes the slot spacing 10s, far above test wall-clock.
-                const buckets = teamEmailCapBuckets(team.id, hourlyCap, dailyCap)
-                await limiter.claimUpTo({
-                    key: buckets[0].key,
-                    requested: hourlyCap,
-                    capacity: buckets[0].capacity,
-                    refillPerSecond: buckets[0].refillPerSecond,
-                })
+                const bucket = teamEmailCapBucket(team.id, dailyCap)
+                await limiter.claimUpTo({ ...bucket, requested: dailyCap })
 
                 const parkedAt: number[] = []
                 for (let i = 0; i < 4; i++) {
