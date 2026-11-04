@@ -121,6 +121,7 @@ describe('health finding reporting', () => {
                     evidence: {},
                     actions: ['open_feature_flag'],
                     diagnostic_ref: 'A5',
+                    check: 'flag_state',
                 },
             ],
             checks: [
@@ -130,7 +131,8 @@ describe('health finding reporting', () => {
                     description: 'Checks that a launched experiment has at least one metric.',
                     status: 'passed',
                     reason: null,
-                    measurement: null,
+                    values: {},
+                    rule: null,
                 },
             ],
         })
