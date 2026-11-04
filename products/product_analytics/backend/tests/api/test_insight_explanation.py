@@ -18,7 +18,7 @@ from products.product_analytics.backend.models import Insight
 from products.product_analytics.backend.presentation.insight_explanation import InsightExplanationSerializer
 
 EXPLANATION: dict[str, Any] = {
-    "query": {"kind": "TrendsQuery", "interval": "day", "series": [{"kind": "EventsNode", "event": "$pageview"}]},
+    "query": {"interval": "day", "series": [{"kind": "EventsNode", "event": "$pageview"}]},
     "results": [
         {"label": "$pageview", "data": [3, 9, 4], "days": ["2026-10-01", "2026-10-02", "2026-10-03"], "count": 16},
     ],
