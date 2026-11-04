@@ -1471,7 +1471,6 @@
       is_outlier UInt8,
       intent_text String, -- truncated copy for the map and outlier lists
       calls_in_run UInt32, -- calls carrying this intent when it was embedded
-      tool LowCardinality(String), -- top tool for this intent when it was embedded
       timestamp DateTime64(3, 'UTC') -- when the assignment was made; newest wins
   ) ENGINE = Distributed('posthog', 'posthog_test', 'sharded_mcp_intent_assignments', cityHash64(intent_hash))
   
@@ -8666,7 +8665,6 @@
       is_outlier UInt8,
       intent_text String, -- truncated copy for the map and outlier lists
       calls_in_run UInt32, -- calls carrying this intent when it was embedded
-      tool LowCardinality(String), -- top tool for this intent when it was embedded
       timestamp DateTime64(3, 'UTC') -- when the assignment was made; newest wins
   ) ENGINE = ReplicatedReplacingMergeTree('/clickhouse/tables/77f1df52-4b43-11e9-910f-b8ca3a9b9f3e_{shard}/posthog.sharded_mcp_intent_assignments', '{replica}', timestamp)
   
@@ -11230,7 +11228,6 @@
       is_outlier UInt8,
       intent_text String, -- truncated copy for the map and outlier lists
       calls_in_run UInt32, -- calls carrying this intent when it was embedded
-      tool LowCardinality(String), -- top tool for this intent when it was embedded
       timestamp DateTime64(3, 'UTC') -- when the assignment was made; newest wins
   ) ENGINE = Distributed('posthog', 'posthog_test', 'sharded_mcp_intent_assignments', cityHash64(intent_hash))
   
@@ -14750,7 +14747,6 @@
       is_outlier UInt8,
       intent_text String, -- truncated copy for the map and outlier lists
       calls_in_run UInt32, -- calls carrying this intent when it was embedded
-      tool LowCardinality(String), -- top tool for this intent when it was embedded
       timestamp DateTime64(3, 'UTC') -- when the assignment was made; newest wins
   ) ENGINE = ReplicatedReplacingMergeTree('/clickhouse/tables/77f1df52-4b43-11e9-910f-b8ca3a9b9f3e_{shard}/posthog.sharded_mcp_intent_assignments', '{replica}', timestamp)
   
