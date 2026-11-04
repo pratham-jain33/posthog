@@ -119,7 +119,7 @@ export interface transactionalEmailLogEntryLogicActions {
 export interface transactionalEmailLogEntryLogicMeta {
     key: string
     __keaTypeGenInternalSelectorTypes: {
-        breadcrumbs: (email: TransactionalEmailLogDetailApi | null | undefined, messageId: string) => Breadcrumb[]
+        breadcrumbs: (messageId: string) => Breadcrumb[]
     }
 }
 
@@ -224,8 +224,8 @@ export const transactionalEmailLogEntryLogic = kea<transactionalEmailLogEntryLog
     })),
     selectors({
         breadcrumbs: [
-            (s, p) => [s.email, p.messageId],
-            (email: TransactionalEmailLogDetailApi | null | undefined, messageId: string): Breadcrumb[] => [
+            (_, p) => [p.messageId],
+            (messageId: string): Breadcrumb[] => [
                 {
                     key: Scene.Transactional,
                     name: 'Transactional',
@@ -235,7 +235,8 @@ export const transactionalEmailLogEntryLogic = kea<transactionalEmailLogEntryLog
                 { key: 'log', name: 'Log', path: urls.transactionalLog(), iconType: 'transactional' },
                 {
                     key: [Scene.TransactionalEmailLogEntry, messageId],
-                    name: email?.recipient || 'Email',
+                    // The page title comes from this name, and analytics record the page title.
+                    name: 'Email',
                     iconType: 'transactional',
                 },
             ],

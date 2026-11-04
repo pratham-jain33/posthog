@@ -64,24 +64,26 @@ export function TransactionalEmailLogEntryScene(): JSX.Element {
 
     return (
         <SceneContent>
-            <SceneTitleSection
-                name={email?.recipient || 'Email'}
-                description={email ? email.subject || email.template_name || null : null}
-                resourceType={{ type: 'transactional' }}
-                isLoading={!email}
-                actions={
-                    email?.template_id ? (
-                        <LemonButton
-                            type="secondary"
-                            size="small"
-                            to={urls.transactionalTemplate(email.template_id)}
-                            data-attr="transactional-email-log-entry-open-template"
-                        >
-                            Open email
-                        </LemonButton>
-                    ) : undefined
-                }
-            />
+            <div className="ph-no-capture contents">
+                <SceneTitleSection
+                    name={email?.recipient || 'Email'}
+                    description={email ? email.subject || email.template_name || null : null}
+                    resourceType={{ type: 'transactional' }}
+                    isLoading={!email}
+                    actions={
+                        email?.template_id ? (
+                            <LemonButton
+                                type="secondary"
+                                size="small"
+                                to={urls.transactionalTemplate(email.template_id)}
+                                data-attr="transactional-email-log-entry-open-template"
+                            >
+                                Open email
+                            </LemonButton>
+                        ) : undefined
+                    }
+                />
+            </div>
             {!email ? (
                 <div className="flex flex-col gap-4">
                     <LemonSkeleton className="h-20" />
