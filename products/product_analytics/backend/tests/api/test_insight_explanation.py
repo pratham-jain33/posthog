@@ -1,6 +1,7 @@
 import copy
 from typing import Any
 
+import time_machine
 from posthog.test.base import APIBaseTest
 from unittest.mock import patch
 
@@ -45,16 +46,9 @@ def _explanation(**changes: Any) -> dict[str, Any]:
     return data
 
 
-def _with_evidence_url(url: str) -> dict[str, Any]:
-    data = _explanation()
-    data["chapters"][0]["evidence"][0]["url"] = url
-    return data
-
-
 class TestInsightExplanationSerializer(SimpleTestCase):
     @parameterized.expand(
         [
-            ("script_link", _with_evidence_url("javascript:alert(1)")),
             ("missing_series", _explanation(seriesIndex=1)),
             ("too_large", _explanation(headline="x" * 1_000_001)),
         ]
@@ -64,11 +58,14 @@ class TestInsightExplanationSerializer(SimpleTestCase):
         assert not serializer.is_valid()
         assert "data" in serializer.errors
 
-    def test_keeps_only_what_the_page_reads_from_each_series(self) -> None:
+    def test_keeps_only_what_the_page_reads(self) -> None:
         serializer = InsightExplanationSerializer(data={"data": EXPLANATION})
         assert serializer.is_valid(), serializer.errors
         assert serializer.validated_data["data"]["results"] == [
             {"label": "$pageview", "data": [3.0, 9.0, 4.0], "days": ["2026-10-01", "2026-10-02", "2026-10-03"]}
+        ]
+        assert serializer.validated_data["data"]["chapters"][0]["evidence"] == [
+            {"text": "Most views came from one referrer."}
         ]
 
 
@@ -94,6 +91,7 @@ class TestInsightExplanationAPI(APIBaseTest):
         )
         assert loaded.status_code == status.HTTP_200_OK
         assert loaded.json()["data"]["headline"] == EXPLANATION["headline"]
+        assert loaded.json()["created_by"]["id"] == self.user.id
 
     def test_an_explanation_only_loads_under_its_own_insight(self) -> None:
         created = self.client.post(self._url(self.insight), {"data": EXPLANATION}, format="json")
@@ -145,3 +143,16 @@ class TestInsightExplanationAPI(APIBaseTest):
 
         assert first.status_code == status.HTTP_201_CREATED
         assert second.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+
+    @parameterized.expand([("soon_after", 29, True), ("much_later", 31, False)])
+    def test_saving_again_keeps_one_link_per_investigation(self, _name: str, minutes_later: int, same: bool) -> None:
+        with time_machine.travel("2026-11-04 10:00:00Z", tick=False):
+            first = self.client.post(self._url(self.insight), {"data": EXPLANATION}, format="json")
+        with time_machine.travel(f"2026-11-04 10:{minutes_later}:00Z", tick=False):
+            second = self.client.post(
+                self._url(self.insight), {"data": _explanation(headline="Fixed dates.")}, format="json"
+            )
+
+        assert (first.json()["id"] == second.json()["id"]) == same
+        loaded = self.client.get(f"{self._url(self.insight)}{first.json()['id']}/")
+        assert loaded.json()["data"]["headline"] == ("Fixed dates." if same else EXPLANATION["headline"])

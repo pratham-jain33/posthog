@@ -2,7 +2,7 @@ import type { insightLogicValues } from 'scenes/insights/insightLogic'
 
 import type { ExplainChartData } from 'products/product_analytics/mcp/apps/explainChart/explainChartTypes'
 
-import { explainChartStoryFor, storyOnChart } from './explainChartStory'
+import { explainChartStoryFor, storyOnChart, withEvidenceLinks } from './explainChartStory'
 
 const INSIGHT = { id: 42, short_id: 'aBc12345' } as insightLogicValues['insight']
 const STORY = {
@@ -57,5 +57,31 @@ describe('explainChartStory', () => {
         const shown = storyOnChart(story, chart, false)
 
         expect(shown.chapters.map((chapter) => chapter.range)).toEqual(expected)
+    })
+
+    it('links each saved evidence item to its query and nothing else', () => {
+        const story = {
+            ...STORY,
+            chapters: [
+                {
+                    title: 'A peak',
+                    range: [1, 1],
+                    summary: null,
+                    cause: null,
+                    confidence: null,
+                    confidenceReason: null,
+                    evidence: [
+                        { text: 'From one referrer.', query: { kind: 'TrendsQuery', series: [] } },
+                        { text: 'Shipped in a release.' },
+                    ],
+                },
+            ],
+        } as unknown as ExplainChartData
+
+        const [withQuery, withoutQuery] = withEvidenceLinks(story).chapters[0].evidence
+
+        expect(withQuery.url).toContain('/insights/new')
+        expect(decodeURIComponent(withQuery.url ?? '')).toContain('"kind":"InsightVizNode"')
+        expect(withoutQuery.url).toBeNull()
     })
 })

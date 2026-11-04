@@ -1,6 +1,9 @@
 import type { insightLogicValues } from 'scenes/insights/insightLogic'
+import { urls } from 'scenes/urls'
 
 import type { AttachedContextItem } from '~/layout/ai/attachedContext'
+import { NodeKind } from '~/queries/schema/schema-general'
+import type { Node } from '~/queries/schema/schema-general'
 
 import type {
     ExplainChartData,
@@ -21,6 +24,30 @@ export function explainChartStoryFor(
         return null
     }
     return isExplainChartData(output) ? output : null
+}
+
+export function withEvidenceLinks(story: ExplainChartData): ExplainChartData {
+    return {
+        ...story,
+        chapters: story.chapters.map((chapter) => ({
+            ...chapter,
+            evidence: chapter.evidence.map((item) => ({
+                ...item,
+                url: item.query ? evidenceInsightUrl(item.query) : null,
+            })),
+        })),
+    }
+}
+
+function evidenceInsightUrl(query: Record<string, unknown>): string {
+    const kind = typeof query.kind === 'string' ? query.kind : NodeKind.TrendsQuery
+    const node =
+        kind === NodeKind.HogQLQuery
+            ? { kind: NodeKind.DataVisualizationNode, source: query }
+            : kind.endsWith('Node')
+              ? query
+              : { kind: NodeKind.InsightVizNode, source: { ...query, kind } }
+    return urls.insightNew({ query: node as unknown as Node })
 }
 
 export function storyOnChart(

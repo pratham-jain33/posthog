@@ -286,11 +286,10 @@ export const InsightsExplanationsCreateBody = /* @__PURE__ */ zod.object({
                             .array(
                                 zod.object({
                                     text: zod.string().describe('One fact that supports the chapter.'),
-                                    url: zod.url().nullable().describe('A PostHog link that shows the fact.'),
                                     query: zod
                                         .record(zod.string(), zod.unknown())
                                         .nullish()
-                                        .describe('The query that shows the fact.'),
+                                        .describe('The query that shows the fact. The page links to it.'),
                                     queryTool: zod
                                         .string()
                                         .nullish()

@@ -9188,7 +9188,7 @@ export interface StoryEvidenceChartApi {
 }
 
 /**
- * The query that shows the fact.
+ * The query that shows the fact. The page links to it.
  * @nullable
  */
 export type StoryEvidenceApiQuery = { [key: string]: unknown } | null
@@ -9197,12 +9197,7 @@ export interface StoryEvidenceApi {
     /** One fact that supports the chapter. */
     text: string
     /**
-     * A PostHog link that shows the fact.
-     * @nullable
-     */
-    url: string | null
-    /**
-     * The query that shows the fact.
+     * The query that shows the fact. The page links to it.
      * @nullable
      */
     query?: StoryEvidenceApiQuery
@@ -9285,6 +9280,8 @@ export interface InsightExplanationApi {
     readonly id: string
     /** The chart explanation, as the insight page shows it. */
     data: ExplainChartDataApi
+    /** Who saved the explanation, directly or through an agent. */
+    readonly created_by: UserBasicApi | null
     readonly created_at: string
 }
 

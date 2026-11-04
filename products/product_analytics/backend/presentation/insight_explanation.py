@@ -1,9 +1,11 @@
 import json
+from datetime import timedelta
 from functools import cached_property
 from typing import Any, cast
 
 from django.db import models
 from django.db.models import QuerySet
+from django.utils import timezone
 
 from rest_framework import mixins, serializers, viewsets
 from rest_framework.exceptions import NotFound
@@ -13,11 +15,14 @@ from rest_framework.throttling import BaseThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from posthog.api.routing import TeamAndOrgViewSetMixin
+from posthog.api.shared import UserBasicSerializer
 from posthog.permissions import AccessControlPermission, APIScopePermission, TeamMemberAccessPermission
 
 from products.product_analytics.backend.models import Insight, InsightExplanation
 
 MAX_EXPLANATION_BYTES = 1_000_000
+# An agent that fixes its chapters calls again within one investigation, which should keep one link.
+REPLACE_WINDOW = timedelta(minutes=30)
 
 
 class InsightExplanationCreateThrottle(UserRateThrottle):
@@ -60,9 +65,11 @@ class StoryEvidenceChartSerializer(serializers.Serializer):
 
 class StoryEvidenceSerializer(serializers.Serializer):
     text = serializers.CharField(help_text="One fact that supports the chapter.")
-    url = serializers.URLField(allow_null=True, help_text="A PostHog link that shows the fact.")
     query = serializers.DictField(
-        child=serializers.JSONField(), allow_null=True, required=False, help_text="The query that shows the fact."
+        child=serializers.JSONField(),
+        allow_null=True,
+        required=False,
+        help_text="The query that shows the fact. The page links to it.",
     )
     queryTool = serializers.CharField(
         allow_null=True, required=False, help_text="The MCP query tool that can redraw `query`."
@@ -91,8 +98,12 @@ class StoryChapterSerializer(serializers.Serializer):
 
 
 class StorySeriesResultSerializer(serializers.Serializer):
-    label = serializers.CharField(required=False, allow_blank=True, help_text="The series name.")
-    data = serializers.ListField(child=serializers.FloatField(), required=False, help_text="One value per point.")
+    label = serializers.CharField(  # type: ignore[assignment]
+        required=False, allow_blank=True, help_text="The series name."
+    )
+    data = serializers.ListField(  # type: ignore[assignment]
+        child=serializers.FloatField(), required=False, help_text="One value per point."
+    )
     days = serializers.ListField(
         child=serializers.CharField(), required=False, help_text="The date of each point, in the query's timezone."
     )
@@ -117,12 +128,18 @@ class ExplainChartDataSerializer(serializers.Serializer):
 
 
 class InsightExplanationSerializer(serializers.ModelSerializer):
-    data = ExplainChartDataSerializer(help_text="The chart explanation, as the insight page shows it.")
+    data = ExplainChartDataSerializer(  # type: ignore[assignment]
+        help_text="The chart explanation, as the insight page shows it."
+    )
+
+    created_by = UserBasicSerializer(
+        read_only=True, allow_null=True, help_text="Who saved the explanation, directly or through an agent."
+    )
 
     class Meta:
         model = InsightExplanation
-        fields = ["id", "data", "created_at"]
-        read_only_fields = ["id", "created_at"]
+        fields = ["id", "data", "created_by", "created_at"]
+        read_only_fields = ["id", "created_by", "created_at"]
 
     def validate_data(self, value: dict[str, Any]) -> dict[str, Any]:
         if len(json.dumps(value)) > MAX_EXPLANATION_BYTES:
@@ -130,12 +147,20 @@ class InsightExplanationSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data: dict[str, Any]) -> InsightExplanation:
-        view = self.context["view"]
+        insight: Insight = self.context["view"].insight
+        user = self.context["request"].user
+        recent = (
+            InsightExplanation.objects.for_team(insight.team_id)
+            .filter(insight=insight, created_by=user, created_at__gte=timezone.now() - REPLACE_WINDOW)
+            .order_by("-created_at")
+            .first()
+        )
+        if recent is not None:
+            recent.data = validated_data["data"]
+            recent.save(update_fields=["data"])
+            return recent
         return InsightExplanation.objects.create(
-            team_id=view.team_id,
-            insight=view.insight,
-            created_by=self.context["request"].user,
-            data=validated_data["data"],
+            team_id=insight.team_id, insight=insight, created_by=user, data=validated_data["data"]
         )
 
 
@@ -184,7 +209,7 @@ class InsightExplanationViewSet(
         return True
 
     def safely_get_queryset(self, queryset: QuerySet) -> QuerySet:
-        return queryset.filter(insight=self.insight)
+        return queryset.filter(insight=self.insight).select_related("created_by")
 
     def get_throttles(self) -> list[BaseThrottle]:
         throttles = super().get_throttles()

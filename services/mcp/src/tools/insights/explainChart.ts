@@ -291,7 +291,7 @@ export const explainChartHandler: ToolBase<typeof schema, Result>['handler'] = a
                 return {
                     text: item.text,
                     url: item.query ? `${baseUrl}${newInsightPath(item.query)}` : (item.url ?? null),
-                    query: queryTool ? item.query : null,
+                    query: item.query ?? null,
                     queryTool,
                     chart: sql && 'chart' in sql ? sql.chart : null,
                 }
