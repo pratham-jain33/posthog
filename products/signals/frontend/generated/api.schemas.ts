@@ -768,6 +768,7 @@ export const GitHubReadinessStatusEnumApi = {
 
 /**
  * * `code` - Code research
+ * * `repository_discovery` - Repository discovery
  * * `data_only` - Project data research
  * * `blocked` - Research blocked
  */
@@ -775,6 +776,7 @@ export type ResearchAccessModeEnumApi = (typeof ResearchAccessModeEnumApi)[keyof
 
 export const ResearchAccessModeEnumApi = {
     Code: 'code',
+    RepositoryDiscovery: 'repository_discovery',
     DataOnly: 'data_only',
     Blocked: 'blocked',
 } as const
@@ -783,6 +785,7 @@ export interface ResearchAccessApi {
     /** Research available to this project.
      *
      * * `code` - Code research
+     * * `repository_discovery` - Repository discovery
      * * `data_only` - Project data research
      * * `blocked` - Research blocked */
     mode: ResearchAccessModeEnumApi
@@ -2037,12 +2040,14 @@ export const SignalReportSuppressionSourceEnumApi = {
 } as const
 
 /**
+ * * `repository_discovery` - Repository discovery
  * * `code` - Code context
  * * `data_only` - Project data
  */
 export type ReportResearchModeEnumApi = (typeof ReportResearchModeEnumApi)[keyof typeof ReportResearchModeEnumApi]
 
 export const ReportResearchModeEnumApi = {
+    RepositoryDiscovery: 'repository_discovery',
     Code: 'code',
     DataOnly: 'data_only',
 } as const
@@ -2068,6 +2073,7 @@ export const ReportRepositoryStatusEnumApi = {
 export interface ReportResearchContextApi {
     /** Whether research had access to a repository.
      *
+     * * `repository_discovery` - Repository discovery
      * * `code` - Code context
      * * `data_only` - Project data */
     mode: ReportResearchModeEnumApi
@@ -2445,6 +2451,8 @@ export interface ReportPlanApi {
 }
 
 export interface SignalReportListApi {
+    /** Whether the recommended implementation target needs explicit human confirmation. */
+    readonly repository_confirmation_required: boolean
     /**
      * Machine-readable research access blocker, if any.
      * @nullable
@@ -2716,6 +2724,8 @@ export interface ReportMetricApi {
 }
 
 export interface SignalReportApi {
+    /** Whether the recommended implementation target needs explicit human confirmation. */
+    readonly repository_confirmation_required: boolean
     /**
      * Machine-readable research access blocker, if any.
      * @nullable
