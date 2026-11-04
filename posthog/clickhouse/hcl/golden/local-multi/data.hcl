@@ -783,9 +783,6 @@ database "posthog" {
     column "calls_in_run" {
       type = "UInt32"
     }
-    column "tool" {
-      type = "LowCardinality(String)"
-    }
     column "timestamp" {
       type = "DateTime64(3, 'UTC')"
     }
@@ -6309,9 +6306,6 @@ database "posthog" {
     column "calls_in_run" {
       type = "UInt32"
     }
-    column "tool" {
-      type = "LowCardinality(String)"
-    }
     column "timestamp" {
       type = "DateTime64(3, 'UTC')"
     }
@@ -9139,9 +9133,6 @@ database "posthog" {
     }
     column "calls_in_run" {
       type = "UInt32"
-    }
-    column "tool" {
-      type = "LowCardinality(String)"
     }
     column "timestamp" {
       type = "DateTime64(3, 'UTC')"
