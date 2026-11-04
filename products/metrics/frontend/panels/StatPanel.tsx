@@ -51,6 +51,7 @@ export function StatPanel({ series, display, fallbackName }: MetricsPanelProps):
             row.metricName ||
             fallbackName
         const color = getColorVar(thresholdColor(value, display.thresholds, FALLBACK_COLOR))
+        const headlineColor = value !== null && display.thresholds?.length ? color : undefined
         const data = row.series.points.map((p) => p.value ?? 0)
         // The headline shows the hovered sparkline point, so it shares one scale with every point.
         const formatValue = metricValuesFormatter(row.series.unit ?? undefined, [...data, value ?? 0])
@@ -73,7 +74,10 @@ export function StatPanel({ series, display, fallbackName }: MetricsPanelProps):
             >
                 {!single && <MetricTitle>{name}</MetricTitle>}
                 <MetricHeader className={cn('flex-wrap items-center', !single && 'mt-2')}>
-                    <MetricValue className="text-2xl @min-[13rem]:text-3xl @min-[16rem]:text-4xl" style={{ color }} />
+                    <MetricValue
+                        className="text-2xl @min-[13rem]:text-3xl @min-[16rem]:text-4xl"
+                        style={{ color: headlineColor }}
+                    />
                     <MetricDelta />
                 </MetricHeader>
                 <MetricSubtitle className="mt-1" />
