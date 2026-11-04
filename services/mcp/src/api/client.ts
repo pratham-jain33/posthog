@@ -1397,8 +1397,8 @@ export class ApiClient {
             }: {
                 insightId: number
                 data: Record<string, unknown>
-            }): Promise<Result<Schemas.InsightExplanation>> => {
-                return this.fetchJson<Schemas.InsightExplanation>(
+            }): Promise<Result<Schemas.ChartExplanation>> => {
+                return this.fetchJson<Schemas.ChartExplanation>(
                     `${this.baseUrl}/api/projects/${projectId}/insights/${insightId}/explanations/`,
                     { method: 'POST', body: JSON.stringify({ data }) }
                 )

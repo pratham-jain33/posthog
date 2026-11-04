@@ -9276,13 +9276,33 @@ export interface ExplainChartDataApi {
     warnings?: unknown[]
 }
 
-export interface InsightExplanationApi {
-    readonly id: string
+export interface InsightExplanationCreateApi {
+    /** The chart explanation, as the insight page shows it. */
+    data: ExplainChartDataApi
+}
+
+export interface ChartExplanationAuthorApi {
+    /** The user's id. */
+    id: number
+    /** The user's first name. */
+    first_name: string
+    /** The user's last name. */
+    last_name: string
+    /** The user's email address. */
+    email: string
+}
+
+export interface ChartExplanationApi {
     /** The chart explanation, as the insight page shows it. */
     data: ExplainChartDataApi
     /** Who saved the explanation, directly or through an agent. */
-    readonly created_by: UserBasicApi | null
-    readonly created_at: string
+    created_by: ChartExplanationAuthorApi | null
+    /** The explanation's id, which its link carries. */
+    id: string
+    /** The insight the explanation belongs to. */
+    insight_id: number
+    /** When the explanation was first saved. */
+    created_at: string
 }
 
 /**

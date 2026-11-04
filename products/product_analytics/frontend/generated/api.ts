@@ -12,6 +12,7 @@ import type {
     ActivityLogPaginatedResponseApi,
     BulkUpdateTagsRequestApi,
     BulkUpdateTagsResponseApi,
+    ChartExplanationApi,
     ColumnConfigurationApi,
     ColumnConfigurationsListParams,
     ElementApi,
@@ -30,7 +31,7 @@ import type {
     InsightBulkSetTestAccountFilterResponseApi,
     InsightDataChecksApi,
     InsightDataChecksRequestApi,
-    InsightExplanationApi,
+    InsightExplanationCreateApi,
     InsightViewedRequestApi,
     InsightsActivityRetrieveParams,
     InsightsAllActivityRetrieveParams,
@@ -493,14 +494,14 @@ export const getInsightsExplanationsCreateUrl = (projectId: string, insightId: n
 export const insightsExplanationsCreate = async (
     projectId: string,
     insightId: number,
-    insightExplanationApi: NonReadonly<InsightExplanationApi>,
+    insightExplanationCreateApi: InsightExplanationCreateApi,
     options?: RequestInit
-): Promise<InsightExplanationApi> => {
-    return apiMutator<InsightExplanationApi>(getInsightsExplanationsCreateUrl(projectId, insightId), {
+): Promise<ChartExplanationApi> => {
+    return apiMutator<ChartExplanationApi>(getInsightsExplanationsCreateUrl(projectId, insightId), {
         ...options,
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...options?.headers },
-        body: JSON.stringify(insightExplanationApi),
+        body: JSON.stringify(insightExplanationCreateApi),
     })
 }
 
@@ -513,8 +514,8 @@ export const insightsExplanationsRetrieve = async (
     insightId: number,
     id: string,
     options?: RequestInit
-): Promise<InsightExplanationApi> => {
-    return apiMutator<InsightExplanationApi>(getInsightsExplanationsRetrieveUrl(projectId, insightId, id), {
+): Promise<ChartExplanationApi> => {
+    return apiMutator<ChartExplanationApi>(getInsightsExplanationsRetrieveUrl(projectId, insightId, id), {
         ...options,
         method: 'GET',
     })

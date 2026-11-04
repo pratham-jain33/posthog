@@ -14,11 +14,14 @@ from posthog.schema import TrendsQueryResponse
 from posthog.clickhouse.client.connection import ClickHouseUser
 from posthog.clickhouse.query_tagging import reset_query_tags, tag_queries
 from posthog.models.team import Team
+from posthog.models.user import User
 
 from products.product_analytics.backend.facade.api import (
+    get_insight_explanation,
     insight_variables_for_team,
     insights_including_soft_deleted_for_team,
     record_insight_view,
+    save_insight_explanation,
     viewer_counts_by_insight,
 )
 from products.product_analytics.backend.facade.queries import run_cached_trends_query
@@ -109,6 +112,38 @@ class TestInsightReads(BaseTest):
         )
 
         assert counts == {viewed.pk: 2}
+
+
+class TestSaveInsightExplanation(BaseTest):
+    @parameterized.expand(
+        [
+            ("same_person_soon_after", 29, True, True),
+            ("same_person_much_later", 31, True, False),
+            ("another_person_soon_after", 5, False, False),
+        ]
+    )
+    def test_a_retry_keeps_one_link_and_nobody_overwrites_another(
+        self, _name: str, minutes_later: int, same_person: bool, same_link: bool
+    ) -> None:
+        insight = Insight.objects.create(team=self.team, name="Pageviews")
+        other = User.objects.create_and_join(self.organization, "other@example.com", None)
+        with time_machine.travel(datetime(2026, 11, 4, 10, 0, tzinfo=UTC), tick=False):
+            first = save_insight_explanation(
+                team_id=self.team.id, insight_id=insight.id, user_id=self.user.id, data={"headline": "First."}
+            )
+        with time_machine.travel(datetime(2026, 11, 4, 10, minutes_later, tzinfo=UTC), tick=False):
+            second = save_insight_explanation(
+                team_id=self.team.id,
+                insight_id=insight.id,
+                user_id=(self.user if same_person else other).id,
+                data={"headline": "Second."},
+            )
+
+        assert (first.id == second.id) == same_link
+        stored = get_insight_explanation(team_id=self.team.id, insight_id=insight.id, explanation_id=first.id)
+        assert stored is not None
+        assert stored.data == {"headline": "Second." if same_link else "First."}
+        assert stored.created_by is not None and stored.created_by.id == self.user.id
 
 
 class TestRunCachedTrendsQuery(BaseTest):

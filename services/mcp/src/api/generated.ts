@@ -24746,6 +24746,180 @@ export namespace Schemas {
       star?: boolean;
     }
 
+    export interface StorySeriesResult {
+      /** The series name. */
+      label?: string;
+      /** One value per point. */
+      data?: number[];
+      /** The date of each point, in the query's timezone. */
+      days?: string[];
+    }
+
+    /**
+     * * `high` - High confidence
+     * * `medium` - Medium confidence
+     * * `low` - Low confidence
+     */
+    export type StoryConfidenceEnum = typeof StoryConfidenceEnum[keyof typeof StoryConfidenceEnum];
+
+
+    export const StoryConfidenceEnum = {
+      High: 'high',
+      Medium: 'medium',
+      Low: 'low',
+    } as const;
+
+    /**
+     * * `line` - Line
+     * * `bar` - Bar
+     */
+    export type StoryEvidenceChartTypeEnum = typeof StoryEvidenceChartTypeEnum[keyof typeof StoryEvidenceChartTypeEnum];
+
+
+    export const StoryEvidenceChartTypeEnum = {
+      Line: 'line',
+      Bar: 'bar',
+    } as const;
+
+    export interface StoryEvidenceSeries {
+      /** The breakdown value or column this line draws. */
+      name: string;
+      /** One value per label. Null where the breakdown value has no row for that point. */
+      values: (number | null)[];
+    }
+
+    export interface StoryEvidenceChart {
+      /** How the evidence chart draws its series.
+       *
+       * * `line` - Line
+       * * `bar` - Bar */
+      type: StoryEvidenceChartTypeEnum;
+      /** The x-axis points. */
+      labels: string[];
+      /** The axis label of each point, which leaves out a date that repeats. */
+      ticks?: string[];
+      /** The lines or bars to draw. */
+      series: StoryEvidenceSeries[];
+      /**
+         * The y-axis label, if any.
+         * @nullable
+         */
+      yAxisLabel: string | null;
+    }
+
+    /**
+     * The query that shows the fact. The page links to it.
+     * @nullable
+     */
+    export type StoryEvidenceQuery = { [key: string]: unknown } | null;
+
+    export interface StoryEvidence {
+      /** One fact that supports the chapter. */
+      text: string;
+      /**
+         * The query that shows the fact. The page links to it.
+         * @nullable
+         */
+      query?: StoryEvidenceQuery;
+      /**
+         * The MCP query tool that can redraw `query`.
+         * @nullable
+         */
+      queryTool?: string | null;
+      /** The fact drawn as a chart, from its SQL. */
+      chart?: StoryEvidenceChart | null;
+    }
+
+    export interface StoryChapter {
+      /** The moment on the chart this chapter explains. */
+      title: string;
+      /**
+         * Inclusive indexes into the series' points. Null when the chapter's dates match no point.
+         * @minItems 2
+         * @maxItems 2
+         * @nullable
+         * @items.minimum 0
+         */
+      range: number[] | null;
+      /**
+         * What happened in this moment.
+         * @nullable
+         */
+      summary: string | null;
+      /**
+         * The likely cause of this moment.
+         * @nullable
+         */
+      cause: string | null;
+      /** How sure the investigation is of the cause.
+       *
+       * * `high` - High confidence
+       * * `medium` - Medium confidence
+       * * `low` - Low confidence */
+      confidence: StoryConfidenceEnum | null;
+      /**
+         * Why the confidence is what it is.
+         * @nullable
+         */
+      confidenceReason: string | null;
+      /** The facts behind the cause. */
+      evidence: StoryEvidence[];
+    }
+
+    /**
+     * The TrendsQuery the explanation follows.
+     */
+    export type ExplainChartDataQuery = { [key: string]: unknown };
+
+    export interface ExplainChartData {
+      /** The TrendsQuery the explanation follows. */
+      query: ExplainChartDataQuery;
+      /** Every series on the chart when it was explained. */
+      results: StorySeriesResult[];
+      /**
+         * The index in `results` the explanation follows.
+         * @minimum 0
+         */
+      seriesIndex: number;
+      /**
+         * The insight's name.
+         * @nullable
+         */
+      insightName: string | null;
+      /** Whether the last point's period had not ended yet. */
+      lastPointInProgress: boolean;
+      /** One sentence a person could read in place of the whole explanation. */
+      headline: string;
+      /** The moments that stand out, in reading order. */
+      chapters: StoryChapter[];
+      /** Warnings the chart's query came back with. */
+      warnings?: unknown[];
+    }
+
+    export interface ChartExplanationAuthor {
+      /** The user's id. */
+      id: number;
+      /** The user's first name. */
+      first_name: string;
+      /** The user's last name. */
+      last_name: string;
+      /** The user's email address. */
+      email: string;
+    }
+
+    export interface ChartExplanation {
+      /** The chart explanation, as the insight page shows it. */
+      data: ExplainChartData;
+      /** Who saved the explanation, directly or through an agent. */
+      created_by: ChartExplanationAuthor | null;
+      /** The explanation's id, which its link carries. */
+      id: string;
+      /** The insight the explanation belongs to. */
+      insight_id: number;
+      /** When the explanation was first saved. */
+      created_at: string;
+    }
+
     /**
      * * `author_scout` - author_scout
      * * `fleet_overview` - fleet_overview
@@ -46233,156 +46407,6 @@ export namespace Schemas {
       ExperimentsList: 'experiments_list',
     } as const;
 
-    /**
-     * The TrendsQuery the explanation follows.
-     */
-    export type ExplainChartDataQuery = { [key: string]: unknown };
-
-    export interface StorySeriesResult {
-      /** The series name. */
-      label?: string;
-      /** One value per point. */
-      data?: number[];
-      /** The date of each point, in the query's timezone. */
-      days?: string[];
-    }
-
-    /**
-     * * `high` - High confidence
-     * * `medium` - Medium confidence
-     * * `low` - Low confidence
-     */
-    export type StoryConfidenceEnum = typeof StoryConfidenceEnum[keyof typeof StoryConfidenceEnum];
-
-
-    export const StoryConfidenceEnum = {
-      High: 'high',
-      Medium: 'medium',
-      Low: 'low',
-    } as const;
-
-    /**
-     * * `line` - Line
-     * * `bar` - Bar
-     */
-    export type StoryEvidenceChartTypeEnum = typeof StoryEvidenceChartTypeEnum[keyof typeof StoryEvidenceChartTypeEnum];
-
-
-    export const StoryEvidenceChartTypeEnum = {
-      Line: 'line',
-      Bar: 'bar',
-    } as const;
-
-    export interface StoryEvidenceSeries {
-      /** The breakdown value or column this line draws. */
-      name: string;
-      /** One value per label. Null where the breakdown value has no row for that point. */
-      values: (number | null)[];
-    }
-
-    export interface StoryEvidenceChart {
-      /** How the evidence chart draws its series.
-       *
-       * * `line` - Line
-       * * `bar` - Bar */
-      type: StoryEvidenceChartTypeEnum;
-      /** The x-axis points. */
-      labels: string[];
-      /** The axis label of each point, which leaves out a date that repeats. */
-      ticks?: string[];
-      /** The lines or bars to draw. */
-      series: StoryEvidenceSeries[];
-      /**
-         * The y-axis label, if any.
-         * @nullable
-         */
-      yAxisLabel: string | null;
-    }
-
-    /**
-     * The query that shows the fact. The page links to it.
-     * @nullable
-     */
-    export type StoryEvidenceQuery = { [key: string]: unknown } | null;
-
-    export interface StoryEvidence {
-      /** One fact that supports the chapter. */
-      text: string;
-      /**
-         * The query that shows the fact. The page links to it.
-         * @nullable
-         */
-      query?: StoryEvidenceQuery;
-      /**
-         * The MCP query tool that can redraw `query`.
-         * @nullable
-         */
-      queryTool?: string | null;
-      /** The fact drawn as a chart, from its SQL. */
-      chart?: StoryEvidenceChart | null;
-    }
-
-    export interface StoryChapter {
-      /** The moment on the chart this chapter explains. */
-      title: string;
-      /**
-         * Inclusive indexes into the series' points. Null when the chapter's dates match no point.
-         * @minItems 2
-         * @maxItems 2
-         * @nullable
-         * @items.minimum 0
-         */
-      range: number[] | null;
-      /**
-         * What happened in this moment.
-         * @nullable
-         */
-      summary: string | null;
-      /**
-         * The likely cause of this moment.
-         * @nullable
-         */
-      cause: string | null;
-      /** How sure the investigation is of the cause.
-       *
-       * * `high` - High confidence
-       * * `medium` - Medium confidence
-       * * `low` - Low confidence */
-      confidence: StoryConfidenceEnum | null;
-      /**
-         * Why the confidence is what it is.
-         * @nullable
-         */
-      confidenceReason: string | null;
-      /** The facts behind the cause. */
-      evidence: StoryEvidence[];
-    }
-
-    export interface ExplainChartData {
-      /** The TrendsQuery the explanation follows. */
-      query: ExplainChartDataQuery;
-      /** Every series on the chart when it was explained. */
-      results: StorySeriesResult[];
-      /**
-         * The index in `results` the explanation follows.
-         * @minimum 0
-         */
-      seriesIndex: number;
-      /**
-         * The insight's name.
-         * @nullable
-         */
-      insightName: string | null;
-      /** Whether the last point's period had not ended yet. */
-      lastPointInProgress: boolean;
-      /** One sentence a person could read in place of the whole explanation. */
-      headline: string;
-      /** The moments that stand out, in reading order. */
-      chapters: StoryChapter[];
-      /** Warnings the chart's query came back with. */
-      warnings?: unknown[];
-    }
-
     export interface ExplainRequest {
       /** UUID of the log entry to explain */
       uuid: string;
@@ -58306,13 +58330,9 @@ export namespace Schemas {
       depth?: InsightDataChecksDepthEnum;
     }
 
-    export interface InsightExplanation {
-      readonly id: string;
+    export interface InsightExplanationCreate {
       /** The chart explanation, as the insight page shows it. */
       data: ExplainChartData;
-      /** Who saved the explanation, directly or through an agent. */
-      readonly created_by: UserBasic | null;
-      readonly created_at: string;
     }
 
     /**

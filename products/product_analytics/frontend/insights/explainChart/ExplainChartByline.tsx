@@ -1,8 +1,6 @@
 import { TZLabel } from 'lib/components/TZLabel'
 import { ProfilePicture } from 'lib/lemon-ui/ProfilePicture'
 
-import type { UserBasicType } from '~/types'
-
 import type { StoryAuthor } from './explainChartLogic'
 
 export function ExplainChartByline({ author }: { author: StoryAuthor }): JSX.Element {
@@ -12,7 +10,7 @@ export function ExplainChartByline({ author }: { author: StoryAuthor }): JSX.Ele
             {author.createdBy && (
                 <>
                     <span>by</span>
-                    <ProfilePicture user={author.createdBy as UserBasicType} showName size="sm" />
+                    <ProfilePicture user={author.createdBy} showName size="sm" />
                 </>
             )}
             <TZLabel time={author.createdAt} />

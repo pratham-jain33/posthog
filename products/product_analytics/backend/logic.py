@@ -1,5 +1,5 @@
 from collections.abc import Collection, Mapping
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
@@ -10,6 +10,7 @@ from django.utils.timezone import now
 
 from products.product_analytics.backend.facade.contracts import InsightVariableDefinition, SavedTrendsInsight
 from products.product_analytics.backend.models.insight import Insight, InsightViewed
+from products.product_analytics.backend.models.insight_explanation import InsightExplanation
 from products.product_analytics.backend.models.insight_variable import InsightVariable
 
 if TYPE_CHECKING:
@@ -17,6 +18,9 @@ if TYPE_CHECKING:
 
 # The columns `InsightVariableDefinition` carries; `values` and `values_query` stay on the row.
 VARIABLE_DEFINITION_FIELDS = ("id", "name", "code_name", "type", "default_value", "is_multi")
+
+# An agent that fixes its chapters saves again within one investigation, which should keep one link.
+EXPLANATION_REPLACE_WINDOW = timedelta(minutes=30)
 
 
 def insight_variables_for_team(team_id: int) -> QuerySet[InsightVariable]:
@@ -263,3 +267,30 @@ def get_or_create_saved_insight(
         insight.deleted = False
         insight.save(update_fields=["deleted"])
     return insight.id, created
+
+
+def save_insight_explanation(
+    *, team_id: int, insight_id: int, user_id: int, data: dict[str, Any]
+) -> InsightExplanation:
+    recent = (
+        InsightExplanation.objects.for_team(team_id)
+        .filter(insight_id=insight_id, created_by_id=user_id, created_at__gte=now() - EXPLANATION_REPLACE_WINDOW)
+        .order_by("-created_at")
+        .first()
+    )
+    if recent is not None:
+        recent.data = data
+        recent.save(update_fields=["data"])
+        return recent
+    return InsightExplanation.objects.for_team(team_id).create(
+        team_id=team_id, insight_id=insight_id, created_by_id=user_id, data=data
+    )
+
+
+def insight_explanation(*, team_id: int, insight_id: int, explanation_id: UUID) -> InsightExplanation | None:
+    return (
+        InsightExplanation.objects.for_team(team_id)
+        .select_related("created_by")
+        .filter(insight_id=insight_id, id=explanation_id)
+        .first()
+    )

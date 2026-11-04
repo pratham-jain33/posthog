@@ -38,7 +38,7 @@ import {
     toolStreamEventsLogic,
 } from 'products/posthog_ai/frontend/api/logics'
 import { insightsExplanationsRetrieve } from 'products/product_analytics/frontend/generated/api'
-import type { UserBasicApi } from 'products/product_analytics/frontend/generated/api.schemas'
+import type { ChartExplanationAuthorApi } from 'products/product_analytics/frontend/generated/api.schemas'
 import { trendsDataLogic } from 'products/product_analytics/frontend/insights/trends/trendsDataLogic'
 import type { IndexedTrendResult } from 'products/product_analytics/frontend/insights/trends/types'
 import type { ExplainChartData } from 'products/product_analytics/mcp/apps/explainChart/explainChartTypes'
@@ -576,6 +576,6 @@ function dataDiffers(a: Node | null | undefined, b: Node | null | undefined): bo
 type StorySource = 'agent' | 'link'
 
 export interface StoryAuthor {
-    createdBy: UserBasicApi | null
+    createdBy: ChartExplanationAuthorApi | null
     createdAt: string
 }

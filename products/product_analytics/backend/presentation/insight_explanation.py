@@ -1,28 +1,30 @@
 import json
-from datetime import timedelta
 from functools import cached_property
 from typing import Any, cast
+from uuid import UUID
 
 from django.db import models
-from django.db.models import QuerySet
-from django.utils import timezone
 
-from rest_framework import mixins, serializers, viewsets
+from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework import serializers, status, viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.request import Request
+from rest_framework.response import Response
 from rest_framework.throttling import BaseThrottle, UserRateThrottle
 from rest_framework.views import APIView
+from rest_framework_dataclasses.serializers import DataclassSerializer
 
+from posthog.api.mixins import ValidatedRequest, validated_request
 from posthog.api.routing import TeamAndOrgViewSetMixin
-from posthog.api.shared import UserBasicSerializer
+from posthog.models import User
 from posthog.permissions import AccessControlPermission, APIScopePermission, TeamMemberAccessPermission
 
-from products.product_analytics.backend.models import Insight, InsightExplanation
+from products.product_analytics.backend.facade import api
+from products.product_analytics.backend.facade.contracts import ChartExplanation, ChartExplanationAuthor
+from products.product_analytics.backend.facade.models import Insight
 
 MAX_EXPLANATION_BYTES = 1_000_000
-# An agent that fixes its chapters calls again within one investigation, which should keep one link.
-REPLACE_WINDOW = timedelta(minutes=30)
 
 
 class InsightExplanationCreateThrottle(UserRateThrottle):
@@ -127,73 +129,66 @@ class ExplainChartDataSerializer(serializers.Serializer):
         return attrs
 
 
-class InsightExplanationSerializer(serializers.ModelSerializer):
+class InsightExplanationCreateSerializer(serializers.Serializer):
     data = ExplainChartDataSerializer(  # type: ignore[assignment]
         help_text="The chart explanation, as the insight page shows it."
     )
-
-    created_by = UserBasicSerializer(
-        read_only=True, allow_null=True, help_text="Who saved the explanation, directly or through an agent."
-    )
-
-    class Meta:
-        model = InsightExplanation
-        fields = ["id", "data", "created_by", "created_at"]
-        read_only_fields = ["id", "created_by", "created_at"]
 
     def validate_data(self, value: dict[str, Any]) -> dict[str, Any]:
         if len(json.dumps(value)) > MAX_EXPLANATION_BYTES:
             raise serializers.ValidationError("The explanation is too large to save.")
         return value
 
-    def create(self, validated_data: dict[str, Any]) -> InsightExplanation:
-        insight: Insight = self.context["view"].insight
-        user = self.context["request"].user
-        recent = (
-            InsightExplanation.objects.for_team(insight.team_id)
-            .filter(insight=insight, created_by=user, created_at__gte=timezone.now() - REPLACE_WINDOW)
-            .order_by("-created_at")
-            .first()
-        )
-        if recent is not None:
-            recent.data = validated_data["data"]
-            recent.save(update_fields=["data"])
-            return recent
-        return InsightExplanation.objects.create(
-            team_id=insight.team_id, insight=insight, created_by=user, data=validated_data["data"]
-        )
+
+class ChartExplanationAuthorSerializer(DataclassSerializer):
+    class Meta:
+        dataclass = ChartExplanationAuthor
+        extra_kwargs = {
+            "id": {"help_text": "The user's id."},
+            "first_name": {"help_text": "The user's first name."},
+            "last_name": {"help_text": "The user's last name."},
+            "email": {"help_text": "The user's email address."},
+        }
+
+
+class ChartExplanationSerializer(DataclassSerializer):
+    data = ExplainChartDataSerializer(  # type: ignore[assignment]
+        help_text="The chart explanation, as the insight page shows it."
+    )
+    created_by = ChartExplanationAuthorSerializer(
+        allow_null=True, help_text="Who saved the explanation, directly or through an agent."
+    )
+
+    class Meta:
+        dataclass = ChartExplanation
+        extra_kwargs = {
+            "id": {"help_text": "The explanation's id, which its link carries."},
+            "insight_id": {"help_text": "The insight the explanation belongs to."},
+            "created_at": {"help_text": "When the explanation was first saved."},
+        }
 
 
 class InsightExplanationAccessPermission(AccessControlPermission):
-    # The resource-wide check refuses a create before object grants are read, so check the parent insight instead.
+    # A create is refused at the resource level before object grants are read, so the view checks the parent insight.
     def has_permission(self, request: Request, view: APIView) -> bool:
-        return self.has_object_permission(request, view, cast(InsightExplanationViewSet, view).insight)
-
-    def has_object_permission(self, request: Request, view: APIView, obj: object) -> bool:
-        insight = obj.insight if isinstance(obj, InsightExplanation) else obj
-        return isinstance(insight, Insight) and super().has_object_permission(request, view, insight)
+        return getattr(view, "action", None) == "create" or super().has_permission(request, view)
 
 
-class InsightExplanationViewSet(
-    TeamAndOrgViewSetMixin, mixins.CreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
-):
+class InsightExplanationViewSet(TeamAndOrgViewSetMixin, viewsets.GenericViewSet):
     scope_object = "insight"
     # Saving an explanation changes nothing anyone else sees, so it needs only read access to the insight.
     scope_object_read_actions = ["retrieve", "create"]
     scope_object_write_actions: list[str] = []
-    queryset = InsightExplanation.objects.unscoped()
-    serializer_class = InsightExplanationSerializer
+    path_parameters = {"pk": UUID, "insight_id": int}
 
     @cached_property
     def insight(self) -> Insight:
-        try:
-            insight = Insight.objects.filter(
-                pk=int(self.parents_query_dict["insight_id"]), team__project_id=self.team.project_id, deleted=False
-            ).first()
-        except ValueError:
-            raise NotFound("Insight not found.")
+        insight = Insight.objects.filter(
+            pk=self.kwargs["parent_lookup_insight_id"], team__project_id=self.team.project_id, deleted=False
+        ).first()
         if insight is None:
             raise NotFound("Insight not found.")
+        self.check_object_permissions(self.request, insight)
         return insight
 
     def dangerously_get_permissions(self) -> list[BasePermission]:
@@ -204,15 +199,30 @@ class InsightExplanationViewSet(
             InsightExplanationAccessPermission(),
         ]
 
-    def _should_skip_parents_filter(self) -> bool:
-        # A child environment stores explanations under its parent team, so scope by the insight alone.
-        return True
-
-    def safely_get_queryset(self, queryset: QuerySet) -> QuerySet:
-        return queryset.filter(insight=self.insight).select_related("created_by")
-
     def get_throttles(self) -> list[BaseThrottle]:
         throttles = super().get_throttles()
         if self.action == "create":
             throttles.append(InsightExplanationCreateThrottle())
         return throttles
+
+    @validated_request(
+        request_serializer=InsightExplanationCreateSerializer,
+        responses={201: OpenApiResponse(response=ChartExplanationSerializer)},
+    )
+    def create(self, request: ValidatedRequest, **kwargs: Any) -> Response:
+        explanation = api.save_insight_explanation(
+            team_id=self.insight.team_id,
+            insight_id=self.insight.id,
+            user_id=cast(User, request.user).id,
+            data=request.validated_data["data"],
+        )
+        return Response(ChartExplanationSerializer(instance=explanation).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(responses={200: ChartExplanationSerializer})
+    def retrieve(self, request: Request, pk: UUID, **kwargs: Any) -> Response:
+        explanation = api.get_insight_explanation(
+            team_id=self.insight.team_id, insight_id=self.insight.id, explanation_id=pk
+        )
+        if explanation is None:
+            raise NotFound("Explanation not found.")
+        return Response(ChartExplanationSerializer(instance=explanation).data)
